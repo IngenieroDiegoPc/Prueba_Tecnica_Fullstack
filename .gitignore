@@ -23,6 +23,7 @@
 hs_err_pid*
 replay_pid*
 
+#Añadido por mi
 # Node / frontend
 node_modules/
 dist/
