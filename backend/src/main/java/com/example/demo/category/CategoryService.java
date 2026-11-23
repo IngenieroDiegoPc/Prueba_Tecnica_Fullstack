@@ -7,14 +7,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.demo.common.ConflictException;
 import com.example.demo.common.NotFoundException;
+import com.example.demo.product.ProductRepository;
 
 @Service
 public class CategoryService {
 
     private final CategoryRepository repository;
+    private final ProductRepository productRepository;
 
-    public CategoryService(CategoryRepository repository) {
+    public CategoryService(CategoryRepository repository, ProductRepository productRepository) {
         this.repository = repository;
+        this.productRepository = productRepository;
     }
 
     @Transactional(readOnly = true)
@@ -47,14 +50,20 @@ public class CategoryService {
         if (repository.existsByNameIgnoreCaseAndIdNot(request.name().trim(), id)) {
             throw new ConflictException("Ya existe otra categoría con ese nombre");
         }
+        if (request.status() == CategoryStatus.INACTIVE && productRepository.existsByCategoryId(id)) {
+            throw new ConflictException("No se puede desactivar una categoría que tiene productos");
+        }
         apply(category, request);
         return CategoryResponse.from(repository.save(category));
     }
 
-    // Eliminar = desactivar. La regla "no desactivar si tiene productos" se agrega con Product.
+    // Eliminar = desactivar, y solo si no tiene productos asociados.
     @Transactional
     public void delete(Long id) {
         Category category = find(id);
+        if (productRepository.existsByCategoryId(id)) {
+            throw new ConflictException("No se puede desactivar una categoría que tiene productos");
+        }
         category.setStatus(CategoryStatus.INACTIVE);
         repository.save(category);
     }
